@@ -26,6 +26,7 @@ st.set_page_config(
 from auth import (
     verify_login, create_user, handle_google_callback,
     get_google_auth_url, GOOGLE_SSO_CONFIGURED,
+    GOOGLE_REDIRECT_URI, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
 )
 from scheduler import (
     create_report, get_user_reports, pause_report,
@@ -143,10 +144,17 @@ if st.session_state.user is None:
                 if url:
                     st.markdown(f'<meta http-equiv="refresh" content="0;url={url}">', unsafe_allow_html=True)
                     st.info("Redirecting to Google…")
+                else:
+                    st.error("Failed to generate Google Auth URL. Check configuration.")
         else:
-            st.button("🔵  Sign in with Google", disabled=True, use_container_width=True,
-                      help="Set GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET in .env to enable.")
-            st.caption("See DEPLOY.md for Google SSO setup.")
+            st.button("🔵  Sign in with Google", disabled=True, use_container_width=True)
+            st.caption("Google SSO not configured. To enable, add **GOOGLE_CLIENT_ID** and **GOOGLE_CLIENT_SECRET** to your Streamlit Secrets.")
+            with st.expander("🛠 Troubleshooting SSO"):
+                st.info(f"""
+                - **Redirect URI:** `{GOOGLE_REDIRECT_URI}` (must match Google Cloud Console)
+                - **Client ID set:** `{'✅ Yes' if GOOGLE_CLIENT_ID else '❌ No'}`
+                - **Client Secret set:** `{'✅ Yes' if GOOGLE_CLIENT_SECRET else '❌ No'}`
+                """)
 
     with tab_reg:
         with st.form("reg_form", clear_on_submit=True):

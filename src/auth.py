@@ -37,9 +37,21 @@ except ImportError:
 # ── Paths & Google config ─────────────────────────────────────────────────────
 DB_PATH = Path(__file__).parent.parent / "data" / "tpv_app.db"
 
-GOOGLE_CLIENT_ID     = os.getenv("GOOGLE_CLIENT_ID", "")
-GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
-GOOGLE_REDIRECT_URI  = os.getenv("APP_BASE_URL", "http://localhost:8501") + "/"
+def _get_secret(key: str, default: str = "") -> str:
+    """Retrieve secret from st.secrets (Streamlit Cloud) or os.environ (Local)."""
+    try:
+        import streamlit as st
+        val = st.secrets.get(key)
+        if val: return str(val)
+    except Exception:
+        pass
+    return os.getenv(key, default)
+
+GOOGLE_CLIENT_ID     = _get_secret("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = _get_secret("GOOGLE_CLIENT_SECRET")
+# APP_BASE_URL is critical for SSO redirect. Default to the user's provided production URL.
+APP_BASE_URL         = _get_secret("APP_BASE_URL", "https://tpv-insights-pro.streamlit.app")
+GOOGLE_REDIRECT_URI  = APP_BASE_URL.rstrip("/") + "/"
 GOOGLE_AUTH_URL      = "https://accounts.google.com/o/oauth2/auth"
 GOOGLE_TOKEN_URL     = "https://accounts.google.com/o/oauth2/token"
 GOOGLE_USERINFO_URL  = "https://www.googleapis.com/oauth2/v1/userinfo"
@@ -53,40 +65,44 @@ GOOGLE_SSO_CONFIGURED = bool(GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET
 
 def init_db():
     """Create all auth tables if they don't exist."""
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
+    try:
+        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
 
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id            INTEGER PRIMARY KEY AUTOINCREMENT,
-            email         TEXT UNIQUE NOT NULL,
-            name          TEXT NOT NULL,
-            password_hash TEXT,
-            auth_method   TEXT DEFAULT 'email',
-            google_id     TEXT,
-            avatar_url    TEXT,
-            created_at    TEXT DEFAULT (datetime('now')),
-            last_login    TEXT,
-            is_active     INTEGER DEFAULT 1
-        )
-    """)
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                email         TEXT UNIQUE NOT NULL,
+                name          TEXT NOT NULL,
+                password_hash TEXT,
+                auth_method   TEXT DEFAULT 'email',
+                google_id     TEXT,
+                avatar_url    TEXT,
+                created_at    TEXT DEFAULT (datetime('now')),
+                last_login    TEXT,
+                is_active     INTEGER DEFAULT 1
+            )
+        """)
 
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS login_logs (
-            id             INTEGER PRIMARY KEY AUTOINCREMENT,
-            email          TEXT NOT NULL,
-            method         TEXT NOT NULL,
-            success        INTEGER NOT NULL,
-            ip_address     TEXT,
-            user_agent     TEXT,
-            failure_reason TEXT,
-            timestamp      TEXT DEFAULT (datetime('now'))
-        )
-    """)
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS login_logs (
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                email          TEXT NOT NULL,
+                method         TEXT NOT NULL,
+                success        INTEGER NOT NULL,
+                ip_address     TEXT,
+                user_agent     TEXT,
+                failure_reason TEXT,
+                timestamp      TEXT DEFAULT (datetime('now'))
+            )
+        """)
 
-    conn.commit()
-    conn.close()
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"[AUTH] Database error: {e}")
+        raise RuntimeError(f"Could not initialize authentication database: {e}")
 
 
 # ── Password helpers ──────────────────────────────────────────────────────────
