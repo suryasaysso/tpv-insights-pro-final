@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.DS_Store
+scripts/eval_results.json
+data/query_history.db
+secrets.toml
+.env
