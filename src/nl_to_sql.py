@@ -3,8 +3,8 @@ nl_to_sql.py
 ────────────
 NL-to-SQL via Groq API with two-model fallback.
 
-PRIMARY  → openai/gpt-oss-120b
-FALLBACK → llama-3.3-70b-versatile (auto on primary 404)
+PRIMARY  → openai/llama-3.3-70b-versatile
+FALLBACK → gpt-oss-120b (auto on primary 404)
 """
 
 import os
