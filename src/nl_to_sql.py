@@ -103,7 +103,9 @@ def call_groq(
             )
             _active_model = model
             content = resp.choices[0].message.content
-            return content if content is not None else ""
+            if not content:
+                raise ValueError(f"Model {model} returned an empty response. This may be due to a safety filter or a transient API issue.")
+            return content
         
         except RateLimitError as e:
             # If we hit rate limit on last attempt or on fallback model, give up or try fallback

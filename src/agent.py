@@ -209,8 +209,12 @@ class TPVAgent:
             return resp
 
         if not gen["sql"]:
-            resp.interpretation = gen["raw_response"]
-            resp.success = True
+            if not gen["raw_response"]:
+                 resp.error = "The model returned an empty response. Check if the Groq API is functioning correctly or if your prompt is triggering a safety filter."
+            else:
+                 # If we have a raw response but no SQL, it's likely a conversational/off-topic question.
+                 resp.interpretation = gen["raw_response"]
+                 resp.success = True
             self._record(resp, user_email)
             return resp
 
