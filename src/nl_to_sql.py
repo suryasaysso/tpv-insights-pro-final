@@ -15,7 +15,11 @@ from openai import OpenAI, RateLimitError, APIStatusError
 from knowledge_base import get_system_prompt
 
 PRIMARY_MODEL  = "llama-3.3-70b-versatile"
-FALLBACK_MODEL = "openai/gpt-oss-120b"
+FALLBACK_MODELS = [
+    "llama-3.1-70b-versatile",
+    "mixtral-8x7b-32768",
+    "llama-3.1-8b-instant"
+]
 DEFAULT_MODEL  = PRIMARY_MODEL
 GROQ_BASE_URL  = "https://api.groq.com/openai/v1"
 
@@ -85,58 +89,58 @@ def call_groq(
 ) -> str:
     global _active_model, _primary_failed
     
-    # If primary has failed permanently (404), use fallback
-    if _primary_failed and model == PRIMARY_MODEL:
-        model = FALLBACK_MODEL
-
-    messages = []
-    if system:
-        messages.append({"role": "system", "content": system})
-    messages.append({"role": "user", "content": prompt})
-
-    max_attempts = 3
-    for attempt in range(max_attempts):
-        try:
-            resp = _get_client().chat.completions.create(
-                model=model, messages=messages,
-                temperature=temperature, max_tokens=max_tokens,
-            )
-            _active_model = model
-            content = resp.choices[0].message.content
-            if not content:
-                raise ValueError(f"Model {model} returned an empty response. This may be due to a safety filter or a transient API issue.")
-            return content
-        
-        except RateLimitError as e:
-            # If we hit rate limit on last attempt or on fallback model, give up or try fallback
-            if attempt == max_attempts - 1 or model == FALLBACK_MODEL:
-                if model == PRIMARY_MODEL:
-                    # Try falling back immediately if primary is rate limited
-                    model = FALLBACK_MODEL
-                    continue
-                raise e
-            
-            # Wait with exponential backoff
-            wait_time = (2 ** attempt) + 1
-            time.sleep(wait_time)
+    # Model candidate list: starting with requested, then all fallbacks
+    candidates = [model] + [m for m in FALLBACK_MODELS if m != model]
+    
+    last_err = None
+    
+    for candidate in candidates:
+        if _primary_failed and candidate == PRIMARY_MODEL:
             continue
-
-        except APIStatusError as e:
-            err = str(e).lower()
-            # If model is not found (404), switch to fallback permanently for this session
-            if model == PRIMARY_MODEL and any(x in err for x in ["404", "not found", "does not exist"]):
-                _primary_failed = True
-                model = FALLBACK_MODEL
-                continue
             
-            # For other 5xx errors, retry
-            if e.status_code >= 500 and attempt < max_attempts - 1:
-                time.sleep(1)
+        messages = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": prompt})
+
+        max_attempts = 2
+        for attempt in range(max_attempts):
+            try:
+                resp = _get_client().chat.completions.create(
+                    model=candidate, messages=messages,
+                    temperature=temperature, max_tokens=max_tokens,
+                )
+                _active_model = candidate
+                content = resp.choices[0].message.content
+                if not content:
+                    # If empty, treat as transient and try next model or retry
+                    print(f"[groq] Empty response from {candidate}, trying next...")
+                    break 
+                return content
+            
+            except RateLimitError as e:
+                if attempt == max_attempts - 1:
+                    print(f"[groq] Rate limit for {candidate}, trying next model...")
+                    break # try next model
+                time.sleep((2 ** attempt) + 1)
                 continue
-            raise e
-        
-        except Exception as e:
-            raise e
+
+            except APIStatusError as e:
+                err_msg = str(e).lower()
+                if candidate == PRIMARY_MODEL and any(x in err_msg for x in ["404", "not found", "does not exist"]):
+                    _primary_failed = True
+                    break # try next model
+                if e.status_code >= 500 and attempt < max_attempts - 1:
+                    time.sleep(1)
+                    continue
+                last_err = e
+                break # try next model
+            
+            except Exception as e:
+                last_err = e
+                break # try next model
+    
+    raise last_err or ValueError("All models failed to return a valid response. Please try again or check your API key.")
 
 
 def call_groq_stream(
@@ -146,50 +150,60 @@ def call_groq_stream(
 ) -> Generator[str, None, None]:
     global _active_model, _primary_failed
     
-    if _primary_failed and model == PRIMARY_MODEL:
-        model = FALLBACK_MODEL
-        
-    messages = []
-    if system:
-        messages.append({"role": "system", "content": system})
-    messages.append({"role": "user", "content": prompt})
-    
-    max_attempts = 3
-    for attempt in range(max_attempts):
-        try:
-            with _get_client().chat.completions.create(
-                model=model, messages=messages,
-                temperature=temperature, max_tokens=max_tokens, stream=True,
-            ) as stream:
-                _active_model = model
-                for chunk in stream:
-                    delta = chunk.choices[0].delta.content
-                    if delta:
-                        yield delta
-            return # Success
+    candidates = [model] + [m for m in FALLBACK_MODELS if m != model]
+    last_err = None
 
-        except RateLimitError as e:
-            if attempt == max_attempts - 1 or model == FALLBACK_MODEL:
-                if model == PRIMARY_MODEL:
-                    model = FALLBACK_MODEL
-                    continue
-                raise e
-            time.sleep((2 ** attempt) + 1)
+    for candidate in candidates:
+        if _primary_failed and candidate == PRIMARY_MODEL:
             continue
             
-        except APIStatusError as e:
-            err = str(e).lower()
-            if model == PRIMARY_MODEL and any(x in err for x in ["404", "not found", "does not exist"]):
-                _primary_failed = True
-                model = FALLBACK_MODEL
-                continue
-            if e.status_code >= 500 and attempt < max_attempts - 1:
-                time.sleep(1)
-                continue
-            raise e
+        messages = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": prompt})
         
-        except Exception as e:
-            raise e
+        max_attempts = 2
+        for attempt in range(max_attempts):
+            try:
+                success = False
+                with _get_client().chat.completions.create(
+                    model=candidate, messages=messages,
+                    temperature=temperature, max_tokens=max_tokens, stream=True,
+                ) as stream:
+                    _active_model = candidate
+                    for chunk in stream:
+                        delta = chunk.choices[0].delta.content
+                        if delta:
+                            success = True
+                            yield delta
+                if success:
+                    return # Success
+                else:
+                    break # try next model
+
+            except RateLimitError as e:
+                if attempt == max_attempts - 1:
+                    break
+                time.sleep((2 ** attempt) + 1)
+                continue
+                
+            except APIStatusError as e:
+                err_msg = str(e).lower()
+                if candidate == PRIMARY_MODEL and any(x in err_msg for x in ["404", "not found", "does not exist"]):
+                    _primary_failed = True
+                    break
+                if e.status_code >= 500 and attempt < max_attempts - 1:
+                    time.sleep(1)
+                    continue
+                last_err = e
+                break
+            
+            except Exception as e:
+                last_err = e
+                break
+                
+    if last_err:
+        raise last_err
 
 
 def extract_sql(text: str) -> Optional[str]:
