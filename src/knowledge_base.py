@@ -56,6 +56,12 @@ CORE_RULES = """
 7. PRE-COMPUTED METRICS:
    NEVER AVG("Avg Paid Invoice Amt")
    → use weighted avg if needed
+
+8. DATE MATH:
+   ALWAYS use INTERVAL. Example: date_end - INTERVAL '12 months'
+
+9. IDENTIFIERS:
+   Never use hyphens in aliases (e.g., use churn_rate, NOT churn-rate)
 """
 
 # =========================
@@ -168,7 +174,7 @@ If result >500% growth or >100% share → FIX query
 # =========================
 # INTERPRETATION PROMPT
 # =========================
-def get_result_interpretation_prompt(question: str, sql: str, results: str) -> str:
+def get_result_interpretation_prompt(question: str, sql: str, results: str, validation_note: str = "") -> str:
    return f"""
 You are a payments analytics expert.
 Question: {question}
@@ -176,6 +182,7 @@ SQL:
 {sql}
 Results:
 {results}
+{validation_note}
 Instructions:
 Give direct answer first
 Include numbers + segment names
