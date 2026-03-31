@@ -15,11 +15,9 @@ from openai import OpenAI, RateLimitError, APIStatusError
 from knowledge_base import get_system_prompt
 
 PRIMARY_MODEL  = "llama-3.3-70b-versatile"
-FALLBACK_MODEL = "gpt-oss-120b"
+FALLBACK_MODEL = "openai/gpt-oss-120b"
 FALLBACK_MODELS = [
-    FALLBACK_MODEL,
-    "llama-3.1-70b-versatile",
-    "llama-3.1-8b-instant"
+    FALLBACK_MODEL
 ]
 DEFAULT_MODEL  = PRIMARY_MODEL
 GROQ_BASE_URL  = "https://api.groq.com/openai/v1"

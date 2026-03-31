@@ -56,7 +56,7 @@ BUSINESS_QUESTIONS = [
 ]
 
 
-def run_tests(model: str = "gpt-oss-120b"):
+def run_tests(model: str = "llama-3.3-70b-versatile"):
     """Run all 15 business questions and print a pass/fail report."""
     if not check_groq_running():
         print("❌ Groq API unreachable. Check your GROQ_API_KEY and network connection.")
@@ -131,5 +131,5 @@ def run_tests(model: str = "gpt-oss-120b"):
 
 
 if __name__ == "__main__":
-    model = sys.argv[1] if len(sys.argv) > 1 else "gpt-oss-120b"
+    model = sys.argv[1] if len(sys.argv) > 1 else "llama-3.3-70b-versatile"
     run_tests(model=model)

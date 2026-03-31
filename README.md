@@ -22,7 +22,7 @@ User Question (Natural Language)
 ```
 
 **Stack:**
-- **LLM:** Groq API + `gpt-oss-120b` (~500 tok/s, OpenAI-compatible endpoint)
+- **LLM:** Groq API + `llama-3.3-70b-versatile` (Primary) + `openai/gpt-oss-120b` (Fallback)
 - **SQL Engine:** DuckDB (zero-setup, reads CSV directly, runs fully local)
 - **RAG Context:** TPV driver tree + data dictionary injected as system prompt
 - **UI:** Streamlit chat interface
