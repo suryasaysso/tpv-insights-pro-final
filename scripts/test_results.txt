@@ -1,0 +1,154 @@
+TPV Insight Pro — Test Results
+Model: llama-3.3-70b-versatile
+======================================================================
+
+Q01: FAIL
+Question: How did our total ecosystem payment volume perform this past week compared to the same week last month?
+SQL:
+
+Rows: 0 | Time: 3.11s
+Interpretation: 
+Error: LLM error: Error code: 413 - {'error': {'message': 'Request too large for model `llama-3.1-8b-instant` in organization `org_01km4tarfnf9mas284kjykhhs3` service tier `on_demand` on tokens per minute (TPM): Limit 6000, Requested 11458, please reduce your message size and try again. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+
+----------------------------------------------------------------------
+
+Q02: FAIL
+Question: What was our total active customer base last month, and how does that compare to the same month in previous years?
+SQL:
+
+Rows: 0 | Time: 3.02s
+Interpretation: 
+Error: LLM error: Error code: 413 - {'error': {'message': 'Request too large for model `llama-3.1-8b-instant` in organization `org_01km4tarfnf9mas284kjykhhs3` service tier `on_demand` on tokens per minute (TPM): Limit 6000, Requested 11462, please reduce your message size and try again. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+
+----------------------------------------------------------------------
+
+Q03: FAIL
+Question: Which customer segment had the worst churn rate last month, and how does it compare to the same period last year?
+SQL:
+
+Rows: 0 | Time: 2.84s
+Interpretation: 
+Error: LLM error: Error code: 413 - {'error': {'message': 'Request too large for model `llama-3.1-8b-instant` in organization `org_01km4tarfnf9mas284kjykhhs3` service tier `on_demand` on tokens per minute (TPM): Limit 6000, Requested 11462, please reduce your message size and try again. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+
+----------------------------------------------------------------------
+
+Q04: FAIL
+Question: Were there any weeks in the last quarter where we saw a noticeable spike in customers lapsing? Who was most affected?
+SQL:
+
+Rows: 0 | Time: 3.0s
+Interpretation: 
+Error: LLM error: Error code: 413 - {'error': {'message': 'Request too large for model `llama-3.1-8b-instant` in organization `org_01km4tarfnf9mas284kjykhhs3` service tier `on_demand` on tokens per minute (TPM): Limit 6000, Requested 11463, please reduce your message size and try again. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+
+----------------------------------------------------------------------
+
+Q05: FAIL
+Question: On average, how much are our card-only customers paying per invoice compared to customers who use a mix of payment methods?
+SQL:
+
+Rows: 0 | Time: 3.27s
+Interpretation: 
+Error: LLM error: Error code: 413 - {'error': {'message': 'Request too large for model `llama-3.1-8b-instant` in organization `org_01km4tarfnf9mas284kjykhhs3` service tier `on_demand` on tokens per minute (TPM): Limit 6000, Requested 11463, please reduce your message size and try again. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+
+----------------------------------------------------------------------
+
+Q06: FAIL
+Question: Looking at weekly data over the last quarter, which segments are driving new customer additions — and is the mix shifting toward higher-value or lower-value customers?
+SQL:
+
+Rows: 0 | Time: 3.13s
+Interpretation: 
+Error: LLM error: Error code: 413 - {'error': {'message': 'Request too large for model `llama-3.1-8b-instant` in organization `org_01km4tarfnf9mas284kjykhhs3` service tier `on_demand` on tokens per minute (TPM): Limit 6000, Requested 11469, please reduce your message size and try again. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+
+----------------------------------------------------------------------
+
+Q07: FAIL
+Question: Month over month, which segment is growing its connected payment volume the fastest — and is that growth coming from recurring invoices or one-time payments?
+SQL:
+
+Rows: 0 | Time: 3.03s
+Interpretation: 
+Error: LLM error: Error code: 413 - {'error': {'message': 'Request too large for model `llama-3.1-8b-instant` in organization `org_01km4tarfnf9mas284kjykhhs3` service tier `on_demand` on tokens per minute (TPM): Limit 6000, Requested 11467, please reduce your message size and try again. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+
+----------------------------------------------------------------------
+
+Q08: FAIL
+Question: How has the average invoice size evolved over the last 12 months? Are our merchants moving upmarket, or are smaller merchants starting to dominate the mix?
+SQL:
+
+Rows: 0 | Time: 3.2s
+Interpretation: 
+Error: LLM error: Error code: 413 - {'error': {'message': 'Request too large for model `llama-3.1-8b-instant` in organization `org_01km4tarfnf9mas284kjykhhs3` service tier `on_demand` on tokens per minute (TPM): Limit 6000, Requested 11470, please reduce your message size and try again. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+
+----------------------------------------------------------------------
+
+Q09: FAIL
+Question: On a weekly basis, are we winning back lapsed customers fast enough to offset the ones we're losing? How does the resurrection-to-lapse ratio look across segments?
+SQL:
+
+Rows: 0 | Time: 2.88s
+Interpretation: 
+Error: LLM error: Error code: 413 - {'error': {'message': 'Request too large for model `llama-3.1-8b-instant` in organization `org_01km4tarfnf9mas284kjykhhs3` service tier `on_demand` on tokens per minute (TPM): Limit 6000, Requested 11473, please reduce your message size and try again. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+
+----------------------------------------------------------------------
+
+Q10: FAIL
+Question: Are our high-value customers churning at a different rate than non-high-value ones? Has that gap been widening or narrowing over the last six months?
+SQL:
+
+Rows: 0 | Time: 2.78s
+Interpretation: 
+Error: LLM error: Error code: 413 - {'error': {'message': 'Request too large for model `llama-3.1-8b-instant` in organization `org_01km4tarfnf9mas284kjykhhs3` service tier `on_demand` on tokens per minute (TPM): Limit 6000, Requested 11469, please reduce your message size and try again. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+
+----------------------------------------------------------------------
+
+Q11: FAIL
+Question: Break down our churn over FY24 through FY26 into active vs passive components on a monthly basis. Is one type improving while the other is getting worse?
+SQL:
+
+Rows: 0 | Time: 3.19s
+Interpretation: 
+Error: LLM error: Error code: 413 - {'error': {'message': 'Request too large for model `llama-3.1-8b-instant` in organization `org_01km4tarfnf9mas284kjykhhs3` service tier `on_demand` on tokens per minute (TPM): Limit 6000, Requested 11470, please reduce your message size and try again. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+
+----------------------------------------------------------------------
+
+Q12: FAIL
+Question: Across our tenure-based cohorts, are the new customers we acquired in FY25 ramping their payment volume faster or slower than FY24 cohorts at the same stage?
+SQL:
+
+Rows: 0 | Time: 3.24s
+Interpretation: 
+Error: LLM error: Error code: 413 - {'error': {'message': 'Request too large for model `llama-3.1-8b-instant` in organization `org_01km4tarfnf9mas284kjykhhs3` service tier `on_demand` on tokens per minute (TPM): Limit 6000, Requested 11471, please reduce your message size and try again. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+
+----------------------------------------------------------------------
+
+Q13: FAIL
+Question: If you built a health scorecard for each segment today — factoring in volume per active user, repeat usage rates, invoice sizes, and churn — which segments are thriving and which ones need immediate attention?
+SQL:
+
+Rows: 0 | Time: 3.04s
+Interpretation: 
+Error: LLM error: Error code: 413 - {'error': {'message': 'Request too large for model `llama-3.1-8b-instant` in organization `org_01km4tarfnf9mas284kjykhhs3` service tier `on_demand` on tokens per minute (TPM): Limit 6000, Requested 11480, please reduce your message size and try again. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+
+----------------------------------------------------------------------
+
+Q14: FAIL
+Question: Looking at weekly activity patterns across our payment-type segments, which payment mix shows the earliest warning signs before a customer disengages?
+SQL:
+
+Rows: 0 | Time: 2.86s
+Interpretation: 
+Error: LLM error: Error code: 413 - {'error': {'message': 'Request too large for model `llama-3.1-8b-instant` in organization `org_01km4tarfnf9mas284kjykhhs3` service tier `on_demand` on tokens per minute (TPM): Limit 6000, Requested 11465, please reduce your message size and try again. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+
+----------------------------------------------------------------------
+
+Q15: FAIL
+Question: Looking at our full segment portfolio on a monthly basis, where does each segment sit on a growth-vs-retention matrix?
+SQL:
+
+Rows: 0 | Time: 3.11s
+Interpretation: 
+Error: LLM error: Error code: 413 - {'error': {'message': 'Request too large for model `llama-3.1-8b-instant` in organization `org_01km4tarfnf9mas284kjykhhs3` service tier `on_demand` on tokens per minute (TPM): Limit 6000, Requested 11463, please reduce your message size and try again. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
+
+----------------------------------------------------------------------
+
