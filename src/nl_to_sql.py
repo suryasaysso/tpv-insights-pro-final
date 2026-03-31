@@ -102,7 +102,8 @@ def call_groq(
                 temperature=temperature, max_tokens=max_tokens,
             )
             _active_model = model
-            return resp.choices[0].message.content
+            content = resp.choices[0].message.content
+            return content if content is not None else ""
         
         except RateLimitError as e:
             # If we hit rate limit on last attempt or on fallback model, give up or try fallback
@@ -190,6 +191,8 @@ def call_groq_stream(
 
 
 def extract_sql(text: str) -> Optional[str]:
+    if not isinstance(text, str):
+        return None
     for pat in [
         r"```sql\s*(.*?)\s*```",
         r"```\s*((?:SELECT|WITH|INSERT|UPDATE|DELETE|CREATE)\s+.*?)\s*```",
@@ -205,6 +208,8 @@ def extract_sql(text: str) -> Optional[str]:
 
 
 def extract_thought(text: str) -> str:
+    if not isinstance(text, str):
+        return ""
     m = re.search(
         r"(?:THOUGHT|APPROACH|ANALYSIS)[:\s]*(.+?)(?:SQL:|```|$)",
         text, re.DOTALL | re.IGNORECASE
