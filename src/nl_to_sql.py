@@ -3,8 +3,8 @@ nl_to_sql.py
 ────────────
 NL-to-SQL via Groq API with gpt-oss-120b fallback.
 
-PRIMARY  → gpt-oss-120b
-FALLBACK → llama-3.3-70b-versatile
+PRIMARY  → llama-3.3-70b-versatile
+FALLBACK → gpt-oss-120b
 """
 
 import os
@@ -14,8 +14,8 @@ from typing import Optional, Generator
 from openai import OpenAI, RateLimitError, APIStatusError
 from knowledge_base import get_system_prompt
 
-PRIMARY_MODEL  = "openai/gpt-oss-120b"
-FALLBACK_MODEL = "llama-3.3-70b-versatile"
+PRIMARY_MODEL  = "llama-3.3-70b-versatile"
+FALLBACK_MODEL = "openai/gpt-oss-120b"
 FALLBACK_MODELS = [
     FALLBACK_MODEL
 ]
