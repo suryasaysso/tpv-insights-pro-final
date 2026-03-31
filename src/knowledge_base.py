@@ -80,7 +80,7 @@ GROUP BY 1;
 """
 
 def get_system_prompt(question: str = "") -> str:
-    return f\"\"\"You are TPV Insight Pro, a payments SQL expert.
+    return f"""You are TPV Insight Pro, a payments SQL expert.
 {TPV_DRIVER_TREE}
 {DATA_DICTIONARY}
 {SQL_RULES}
@@ -90,14 +90,14 @@ FORMAT:
 1. THOUGHT: analytical approach (1-2 sentences).
 2. SQL: ```sql ... ```
 3. INTERPRETATION: Leave blank.
-\"\"\"
+"""
 
 def get_result_interpretation_prompt(question: str, sql: str, results: str, validation_note: str = "") -> str:
-    return f\"\"\"Interpret these payments analytics results.
+    return f"""Interpret these payments analytics results.
 Question: {question}
 SQL: {sql}
 Results: {results}
 {validation_note}
 {TPV_DRIVER_TREE}
 Lead with the direct answer. Use absolute counts and rates. Call out mix-shifts.
-\"\"\"
+"""
