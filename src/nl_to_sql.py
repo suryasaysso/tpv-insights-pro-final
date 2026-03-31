@@ -19,7 +19,7 @@ FALLBACK_MODEL = "gpt-oss-120b"
 FALLBACK_MODELS = [
     FALLBACK_MODEL,
     "llama-3.1-70b-versatile",
-    "mixtral-8x7b-32768"
+    "llama-3.1-8b-instant"
 ]
 DEFAULT_MODEL  = PRIMARY_MODEL
 GROQ_BASE_URL  = "https://api.groq.com/openai/v1"
