@@ -479,49 +479,72 @@ with tab_sched:
 # ── HISTORY TAB ───────────────────────────────────────────────────────────────
 with tab_hist:
     st.subheader("📜 My Query History")
-    st.caption("Only you can see these queries. Generations include automated confidence scoring.")
+    st.caption("Detailed log of your analytical queries, confidence scores, and performance metrics.")
     
-    my_hist = history_db.get_history(user_email=user["email"], limit=50)
+    my_hist = history_db.get_history(user_email=user["email"], limit=100)
     
     if my_hist.empty:
         st.info("No query history yet. Start a conversation in the Chat tab!")
     else:
-        for _, row in my_hist.iterrows():
-            with st.container():
-                # Score styling
-                score = row['confidence_score']
-                if score >= 0.8: color, label = "#059669", "High Confidence"
-                elif score >= 0.5: color, label = "#d97706", "Moderate Confidence"
-                else: color, label = "#dc2626", "Low Confidence"
+        # Prepare display dataframe
+        disp_df = my_hist.copy()
+        disp_df["Time"] = pd.to_datetime(disp_df["created_at"]).dt.strftime("%Y-%m-%d %H:%M")
+        disp_df["Latency"] = (disp_df["total_ms"] / 1000).map("{:.1f}s".format)
+        disp_df["Confidence"] = (disp_df["confidence_score"] * 100).map("{:.1f}%".format)
+        disp_df["Status"] = disp_df["success"].map({1: "✅ Success", 0: "❌ Failed"})
+        disp_df["Repair"] = disp_df["had_repair"].map({1: "🔧 Fixed", 0: "—"})
+        
+        # Rename and select columns for the table
+        table_df = disp_df[[
+            "Time", "question", "question_category", "Status", 
+            "Confidence", "rows_returned", "Latency", "Repair"
+        ]].rename(columns={
+            "question": "Question",
+            "question_category": "Category",
+            "rows_returned": "Rows"
+        })
+        
+        # Display as interactive dataframe
+        st.dataframe(
+            table_df,
+            use_container_width=True,
+            column_config={
+                "Confidence": st.column_config.TextColumn("Confidence", help="Composite trust score"),
+                "Rows": st.column_config.NumberColumn("Rows", format="%d"),
+                "Time": st.column_config.TextColumn("Time"),
+            },
+            hide_index=True
+        )
+        
+        st.divider()
+        st.markdown("#### 🔍 Record Detail")
+        selected_q = st.selectbox(
+            "Select a query to view full SQL and Interpretation:",
+            options=my_hist.index,
+            format_func=lambda i: f"{my_hist.loc[i, 'created_at'][:16]} | {my_hist.loc[i, 'question'][:80]}..."
+        )
+        
+        if selected_q is not None:
+            full_rec = history_db.get_record(my_hist.loc[selected_q, "id"])
+            if full_rec:
+                det_c1, det_c2 = st.columns([1, 1])
+                with det_c1:
+                    st.markdown("**Question Category:** " + str(full_rec.get("question_category", "N/A")).capitalize())
+                    st.markdown("**Model Used:** `" + str(full_rec.get("model_used", "N/A")) + "`")
+                with det_c2:
+                    st.markdown("**SQL Complexity:** " + str(full_rec.get("sql_complexity", "N/A")).capitalize())
+                    st.markdown("**Repair Attempts:** " + str(full_rec.get("retries_used", 0)))
                 
-                # Header row
-                c1, c2 = st.columns([4, 1])
-                with c1:
-                    st.markdown(f"**{row['question']}**")
-                with c2:
-                    st.markdown(f'<div style="text-align:right;font-size:.75rem;color:#6b7280">{row["created_at"][:16].replace("T", " ")}</div>', unsafe_allow_html=True)
+                if full_rec.get("interpretation"):
+                    st.info("**Interpretation**\n\n" + full_rec["interpretation"])
                 
-                # Detail row
-                meta_cols = st.columns([1, 1, 1, 1])
-                with meta_cols[0]:
-                    st.markdown(f'<span style="color:{color};font-weight:600;font-size:.8rem">● {label} ({score:.2f})</span>', unsafe_allow_html=True)
-                with meta_cols[1]:
-                    st.markdown(f'<span style="color:#6b7280;font-size:.8rem">⏱ {row["total_ms"]/1000:.1f}s</span>', unsafe_allow_html=True)
-                with meta_cols[2]:
-                    st.markdown(f'<span style="color:#6b7280;font-size:.8rem">📊 {row["rows_returned"]} rows</span>', unsafe_allow_html=True)
-                with meta_cols[3]:
-                    st.markdown(f'<span style="color:#6b7280;font-size:.8rem">🧩 {row["sql_complexity"].capitalize()}</span>', unsafe_allow_html=True)
+                if full_rec.get("sql_generated"):
+                    st.markdown("**Generated SQL**")
+                    st.code(full_rec["sql_generated"], language="sql")
                 
-                # Expandable query info
-                with st.expander("View Interpretation & SQL"):
-                    full_rec = history_db.get_record(row['id'])
-                    if full_rec:
-                        if full_rec.get('interpretation'):
-                            st.markdown(f"**Interpretation:**\n{full_rec['interpretation']}")
-                        if full_rec.get('sql_generated'):
-                            st.markdown("**SQL:**")
-                            st.code(full_rec['sql_generated'], language="sql")
-                        if full_rec.get('thought'):
-                            st.markdown(f"*Thought: {full_rec['thought']}*")
+                if full_rec.get("thought"):
+                    with st.expander("🧠 View Analytical Thought Process"):
+                        st.markdown(f'<div class="thought-block">{full_rec["thought"]}</div>', unsafe_allow_html=True)
                 
-                st.divider()
+                if full_rec.get("error_message"):
+                    st.error("**Error Message:** " + full_rec["error_message"])
