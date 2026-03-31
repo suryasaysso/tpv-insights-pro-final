@@ -20,6 +20,7 @@ FALLBACK_MODELS = [
     "mixtral-8x7b-32768",
     "llama-3.1-8b-instant"
 ]
+FALLBACK_MODEL = FALLBACK_MODELS[0]
 DEFAULT_MODEL  = PRIMARY_MODEL
 GROQ_BASE_URL  = "https://api.groq.com/openai/v1"
 

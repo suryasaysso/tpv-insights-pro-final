@@ -116,37 +116,52 @@ def _hash_password(password: str) -> str:
 
 
 def _verify_password(password: str, stored: str) -> bool:
-    if _USE_BCRYPT and not stored.startswith("sha256:"):
-        try:
-            return bcrypt.checkpw(password.encode(), stored.encode())
-        except Exception:
-            return False
+    """Verify password against stored hash, handling both bcrypt and sha256."""
     if stored.startswith("sha256:"):
         _, salt, hashed = stored.split(":", 2)
         return hashlib.sha256((salt + password).encode()).hexdigest() == hashed
-    return False
+    
+    # If not sha256, assume bcrypt
+    if _USE_BCRYPT:
+        try:
+            return bcrypt.checkpw(password.encode(), stored.encode())
+        except Exception as e:
+            print(f"[AUTH] Bcrypt verification error: {e}")
+            return False
+    else:
+        # User has a bcrypt hash but the current environment lacks bcrypt
+        print("[AUTH] Cannot verify bcrypt hash: bcrypt library not available.")
+        return False
 
-
-# ── User operations ───────────────────────────────────────────────────────────
 
 def create_user(email: str, password: str, name: str) -> tuple[bool, str]:
     """Register a new email/password user. Returns (success, message)."""
     init_db()
+    email = email.lower().strip()
     if len(password) < 6:
         return False, "Password must be at least 6 characters."
     if "@" not in email or "." not in email:
         return False, "Please enter a valid email address."
+    
     try:
         conn = sqlite3.connect(DB_PATH)
+        # Check if user exists with ANY auth method
+        c = conn.cursor()
+        c.execute("SELECT auth_method FROM users WHERE email = ?", (email,))
+        row = c.fetchone()
+        
+        if row:
+            if row[0] == 'google':
+                return False, "This email is linked to a Google account. Please 'Sign in with Google'."
+            return False, "An account with this email already exists."
+
         conn.execute(
             "INSERT INTO users (email, name, password_hash, auth_method) VALUES (?,?,?,'email')",
-            (email.lower().strip(), name.strip(), _hash_password(password))
+            (email, name.strip(), _hash_password(password))
         )
         conn.commit()
         conn.close()
         return True, "Account created! You can now sign in."
-    except sqlite3.IntegrityError:
-        return False, "An account with this email already exists."
     except Exception as e:
         return False, f"Error: {e}"
 
@@ -156,12 +171,13 @@ def verify_login(email: str, password: str) -> tuple[bool, Optional[dict], str]:
     Verify email/password. Returns (success, user_dict | None, message).
     """
     init_db()
+    email = email.lower().strip()
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute(
-        "SELECT id, email, name, password_hash, is_active "
-        "FROM users WHERE email = ? AND auth_method = 'email'",
-        (email.lower().strip(),)
+        "SELECT id, email, name, password_hash, auth_method, is_active "
+        "FROM users WHERE email = ?",
+        (email,)
     )
     row = c.fetchone()
 
@@ -170,12 +186,18 @@ def verify_login(email: str, password: str) -> tuple[bool, Optional[dict], str]:
         log_login(email, "email_password", False, failure_reason="User not found")
         return False, None, "Invalid email or password."
 
-    uid, uemail, name, pw_hash, active = row
+    uid, uemail, name, pw_hash, method, active = row
 
     if not active:
         conn.close()
         log_login(email, "email_password", False, failure_reason="Disabled")
         return False, None, "Account disabled. Contact support."
+
+    if method != 'email':
+        conn.close()
+        msg = f"This account uses {method.title()} sign-in. Please use that method."
+        log_login(email, "email_password", False, failure_reason=f"Wrong method: {method}")
+        return False, None, msg
 
     if not _verify_password(password, pw_hash):
         conn.close()
