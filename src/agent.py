@@ -280,7 +280,9 @@ class TPVAgent:
                         resp.results_df = new_df
                     except Exception:
                         pass   # keep original result if regen also fails
-            except Exception:
+            except Exception as e:
+                # Log API error but don't crash; keep original result
+                print(f"[agent] Validation regeneration API error: {e}")
                 pass   # validation note is kept for display; continue to interpret
 
         # ── Step 4: Interpret results ───────────────────────────────────────
@@ -299,11 +301,14 @@ class TPVAgent:
                     results=resp.results_preview,
                     validation_note=resp.validation_note,
                 )
-                resp.interpretation = call_groq(
-                    prompt=interp_prompt,
-                    model=self.model,
-                    temperature=0.3,
-                )
+                try:
+                    resp.interpretation = call_groq(
+                        prompt=interp_prompt,
+                        model=self.model,
+                        temperature=0.3,
+                    )
+                except Exception as e:
+                    resp.interpretation = f"The query was successful, but I encountered an error generating the natural language interpretation: {e}. You can still view the raw data and SQL below."
         resp.interp_ms = (time.time() - t0) * 1000
 
         resp.success = True

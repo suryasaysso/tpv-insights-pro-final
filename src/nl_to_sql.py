@@ -9,8 +9,9 @@ FALLBACK → gpt-oss-120b (auto on primary 404)
 
 import os
 import re
+import time
 from typing import Optional, Generator
-from openai import OpenAI
+from openai import OpenAI, RateLimitError, APIStatusError
 from knowledge_base import get_system_prompt
 
 PRIMARY_MODEL  = "llama-3.3-70b-versatile"
@@ -51,7 +52,12 @@ def _load_api_key() -> str:
 def _get_client() -> OpenAI:
     global _client
     if _client is None:
-        _client = OpenAI(api_key=_load_api_key(), base_url=GROQ_BASE_URL)
+        # Default retry configuration for standard transient errors
+        _client = OpenAI(
+            api_key=_load_api_key(), 
+            base_url=GROQ_BASE_URL,
+            max_retries=3
+        )
     return _client
 
 
@@ -78,6 +84,8 @@ def call_groq(
     max_tokens: int = 2048,
 ) -> str:
     global _active_model, _primary_failed
+    
+    # If primary has failed permanently (404), use fallback
     if _primary_failed and model == PRIMARY_MODEL:
         model = FALLBACK_MODEL
 
@@ -86,24 +94,46 @@ def call_groq(
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
 
-    try:
-        resp = _get_client().chat.completions.create(
-            model=model, messages=messages,
-            temperature=temperature, max_tokens=max_tokens,
-        )
-        _active_model = model
-        return resp.choices[0].message.content
-    except Exception as e:
-        err = str(e).lower()
-        if model == PRIMARY_MODEL and any(x in err for x in ["404","not found","does not exist"]):
-            _primary_failed = True
-            _active_model   = FALLBACK_MODEL
+    max_attempts = 3
+    for attempt in range(max_attempts):
+        try:
             resp = _get_client().chat.completions.create(
-                model=FALLBACK_MODEL, messages=messages,
+                model=model, messages=messages,
                 temperature=temperature, max_tokens=max_tokens,
             )
+            _active_model = model
             return resp.choices[0].message.content
-        raise
+        
+        except RateLimitError as e:
+            # If we hit rate limit on last attempt or on fallback model, give up or try fallback
+            if attempt == max_attempts - 1 or model == FALLBACK_MODEL:
+                if model == PRIMARY_MODEL:
+                    # Try falling back immediately if primary is rate limited
+                    model = FALLBACK_MODEL
+                    continue
+                raise e
+            
+            # Wait with exponential backoff
+            wait_time = (2 ** attempt) + 1
+            time.sleep(wait_time)
+            continue
+
+        except APIStatusError as e:
+            err = str(e).lower()
+            # If model is not found (404), switch to fallback permanently for this session
+            if model == PRIMARY_MODEL and any(x in err for x in ["404", "not found", "does not exist"]):
+                _primary_failed = True
+                model = FALLBACK_MODEL
+                continue
+            
+            # For other 5xx errors, retry
+            if e.status_code >= 500 and attempt < max_attempts - 1:
+                time.sleep(1)
+                continue
+            raise e
+        
+        except Exception as e:
+            raise e
 
 
 def call_groq_stream(
@@ -112,37 +142,51 @@ def call_groq_stream(
     temperature: float = 0.1, max_tokens: int = 2048,
 ) -> Generator[str, None, None]:
     global _active_model, _primary_failed
+    
     if _primary_failed and model == PRIMARY_MODEL:
         model = FALLBACK_MODEL
+        
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
-    try:
-        with _get_client().chat.completions.create(
-            model=model, messages=messages,
-            temperature=temperature, max_tokens=max_tokens, stream=True,
-        ) as stream:
-            _active_model = model
-            for chunk in stream:
-                delta = chunk.choices[0].delta.content
-                if delta:
-                    yield delta
-    except Exception as e:
-        err = str(e).lower()
-        if model == PRIMARY_MODEL and any(x in err for x in ["404","not found","does not exist"]):
-            _primary_failed = True
-            _active_model   = FALLBACK_MODEL
+    
+    max_attempts = 3
+    for attempt in range(max_attempts):
+        try:
             with _get_client().chat.completions.create(
-                model=FALLBACK_MODEL, messages=messages,
+                model=model, messages=messages,
                 temperature=temperature, max_tokens=max_tokens, stream=True,
             ) as stream:
+                _active_model = model
                 for chunk in stream:
                     delta = chunk.choices[0].delta.content
                     if delta:
                         yield delta
-        else:
-            raise
+            return # Success
+
+        except RateLimitError as e:
+            if attempt == max_attempts - 1 or model == FALLBACK_MODEL:
+                if model == PRIMARY_MODEL:
+                    model = FALLBACK_MODEL
+                    continue
+                raise e
+            time.sleep((2 ** attempt) + 1)
+            continue
+            
+        except APIStatusError as e:
+            err = str(e).lower()
+            if model == PRIMARY_MODEL and any(x in err for x in ["404", "not found", "does not exist"]):
+                _primary_failed = True
+                model = FALLBACK_MODEL
+                continue
+            if e.status_code >= 500 and attempt < max_attempts - 1:
+                time.sleep(1)
+                continue
+            raise e
+        
+        except Exception as e:
+            raise e
 
 
 def extract_sql(text: str) -> Optional[str]:
