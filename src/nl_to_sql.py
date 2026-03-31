@@ -102,7 +102,8 @@ def call_groq(
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
 
-        max_attempts = 2
+        # Separate retry logic for rate limits vs other errors
+        max_attempts = 3 if candidate == PRIMARY_MODEL else 1
         for attempt in range(max_attempts):
             try:
                 resp = _get_client().chat.completions.create(
@@ -112,34 +113,48 @@ def call_groq(
                 _active_model = candidate
                 content = resp.choices[0].message.content
                 if not content:
-                    # If empty, treat as transient and try next model or retry
                     print(f"[groq] Empty response from {candidate}, trying next...")
                     break 
                 return content
             
             except RateLimitError as e:
-                if attempt == max_attempts - 1:
-                    print(f"[groq] Rate limit for {candidate}, trying next model...")
-                    break # try next model
-                time.sleep((2 ** attempt) + 1)
-                continue
+                # If it's the primary model, we try to wait a bit. 
+                # If it's the fallback, we likely hit a hard ceiling.
+                if attempt < max_attempts - 1:
+                    wait_time = (2 ** attempt) + 1
+                    print(f"[groq] Rate limit for {candidate}. Retrying in {wait_time}s...")
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    print(f"[groq] Hard rate limit for {candidate}. Moving to next candidate.")
+                    break 
 
             except APIStatusError as e:
+                # 413: Request Too Large
+                if e.status_code == 413:
+                    print(f"[groq] 413 Request Too Large for {candidate}.")
+                    last_err = e
+                    break # try next candidate
+
                 err_msg = str(e).lower()
                 if candidate == PRIMARY_MODEL and any(x in err_msg for x in ["404", "not found", "does not exist"]):
                     _primary_failed = True
-                    break # try next model
+                    break
+                
                 if e.status_code >= 500 and attempt < max_attempts - 1:
                     time.sleep(1)
                     continue
                 last_err = e
-                break # try next model
+                break
             
             except Exception as e:
                 last_err = e
-                break # try next model
+                break
     
-    raise last_err or ValueError("All models failed to return a valid response. Please try again or check your API key.")
+    if last_err and getattr(last_err, "status_code", None) == 413:
+        raise ValueError(f"The analysis request is too large for the available AI models (Groq Free Tier limits). Error: {last_err}")
+    
+    raise last_err or ValueError("All models failed to return a valid response.")
 
 
 def call_groq_stream(
