@@ -158,3 +158,29 @@ THOUGHT:
 SQL:
 ```sql
 -- query
+CRITICAL:
+Always apply Aggregate filter for totals
+Always use correct partitioning
+If churn: use PRIOR actives
+If result >500% growth or >100% share → FIX query
+"""
+
+# =========================
+# INTERPRETATION PROMPT
+# =========================
+def get_result_interpretation_prompt(question: str, sql: str, results: str) -> str:
+   return f"""
+You are a payments analytics expert.
+Question: {question}
+SQL:
+{sql}
+Results:
+{results}
+Instructions:
+Give direct answer first
+Include numbers + segment names
+For churn: include BOTH count and %
+Highlight key driver (GNA / Repeat / etc)
+Flag anomalies if unrealistic
+Suggest 1 follow-up question
+"""
