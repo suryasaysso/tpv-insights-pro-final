@@ -45,10 +45,12 @@ SQL_RULES = """
 === SQL RULES ===
 1. Grain: Filter "Time Period" = 'Week' OR 'Month'. Never mix.
 2. Last Period: date_end = (SELECT MAX(date_end) FROM payments WHERE "Time Period" = '...')
-3. Window Fns: ALWAYS PARTITION BY "Segment Name", Segment.
-4. Churn: Numerator = Counts. Denominator = LAG(actives). Worst = ORDER BY rate DESC.
-5. Parents: Divide sub-metrics ONLY by their direct parent (e.g. Recurring / Invoice Total).
-6. Averages: Never naively AVG() pre-computed columns; use weighted average by actives.
+3. Date Math: ALWAYS use INTERVAL. Example: date_end - INTERVAL '12 months'.
+4. Identifiers: Never use hyphens in aliases (e.g. use churn_rate, NOT churn-rate).
+5. Window Fns: ALWAYS PARTITION BY "Segment Name", Segment (both).
+6. Churn: Numerator = Counts. Denominator = LAG(actives). Worst = ORDER BY rate DESC.
+7. Parents: Divide sub-metrics ONLY by their direct parent (e.g. Recurring / Invoice Total).
+8. Averages: Never naively AVG() pre-computed columns; use weighted average by actives.
 """
 
 SQL_TEMPLATES = """
@@ -70,13 +72,6 @@ SELECT *, ROUND(total_churn / NULLIF(prior_actives, 0) * 100, 2) as churn_rate_p
 FROM base WHERE date_end = (SELECT MAX(date_end) FROM payments WHERE "Time Period"='Month')
   AND prior_actives >= 50 AND total_churn > 0
 ORDER BY churn_rate_pct DESC LIMIT 10;
-
--- T3: Segment Comparison (Weighted Avg)
-SELECT "Segment Name",
-       ROUND(SUM("Avg Paid Invoice Amt" * "Eco Actives 31d Absolute") / NULLIF(SUM("Eco Actives 31d Absolute"), 0), 2) as weighted_avg_invoice
-FROM payments WHERE "Time Period" = 'Month' AND Segment != 'All Segments'
-  AND date_end = (SELECT MAX(date_end) FROM payments WHERE "Time Period"='Month')
-GROUP BY 1;
 """
 
 def get_system_prompt(question: str = "") -> str:
@@ -90,6 +85,11 @@ FORMAT:
 1. THOUGHT: analytical approach (1-2 sentences).
 2. SQL: ```sql ... ```
 3. INTERPRETATION: Leave blank.
+
+SELF-CHECK:
+- Is my date math using INTERVAL?
+- Does my alias have a hyphen? (FIX IT to underscore)
+- Did I filter for Aggregate row for total business?
 """
 
 def get_result_interpretation_prompt(question: str, sql: str, results: str, validation_note: str = "") -> str:
