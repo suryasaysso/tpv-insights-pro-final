@@ -187,8 +187,8 @@ if st.session_state.login_toast:
     st.toast(st.session_state.login_toast, icon="✅")
     st.session_state.login_toast = None
 
-if st.session_state.agent is None:
-    from agent import TPVAgent
+from agent import TPVAgent
+if st.session_state.agent is None or getattr(st.session_state.agent, "model", None) != PRIMARY_MODEL:
     st.session_state.agent = TPVAgent(model=PRIMARY_MODEL)
 agent = st.session_state.agent
 

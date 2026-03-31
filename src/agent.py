@@ -47,6 +47,7 @@ class AgentResponse:
     sql_gen_ms: float = 0.0
     sql_exec_ms: float = 0.0
     interp_ms: float = 0.0
+    model: str = ""
     history_id: str = ""
 
     @property
@@ -195,6 +196,7 @@ class TPVAgent:
 
     def run(self, question: str, user_email: str = "anonymous") -> AgentResponse:
         resp = AgentResponse(question=question)
+        resp.model = self.model
         self._turn_number += 1
 
         # ── Step 1: Generate SQL ────────────────────────────────────────────
@@ -202,6 +204,9 @@ class TPVAgent:
         gen = self.nl_to_sql.generate(question)
         resp.sql_gen_ms = (time.time() - t0) * 1000
         resp.thought    = gen["thought"]
+        
+        from nl_to_sql import get_active_model
+        resp.model = get_active_model()
 
         if gen["error"]:
             resp.error = f"LLM error: {gen['error']}"
@@ -327,7 +332,7 @@ class TPVAgent:
                 session_id=self.session_id,
                 user_email=user_email,
                 turn_number=self._turn_number,
-                model_used=self.model,
+                model_used=resp.model,
                 sql_gen_ms=resp.sql_gen_ms,
                 sql_exec_ms=resp.sql_exec_ms,
                 interp_ms=resp.interp_ms,
