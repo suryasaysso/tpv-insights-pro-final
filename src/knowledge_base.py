@@ -34,10 +34,11 @@ CORE_RULES = """
 4. PARTITION RULE:
    ALWAYS: PARTITION BY "Segment Name", Segment (never just one)
 
-5. CHURN:
-   total_churn = active_cohorted_churn + passive_cohorted_churn
-   churn_rate = total_churn / LAG("Eco Actives 31d Absolute")
-   RULES: Use PRIOR actives for denominator; exclude NULL churn; filter prior_actives >= 50.
+5. CHURN & LAPSE:
+   - "Lapsing" vs "Churn": For "Week" grain or when cohorted churn is NULL, use Lapse columns as proxy.
+   - Churn rate = (active_cohorted_churn + passive_cohorted_churn) / LAG("Eco Actives 31d Absolute")
+   - Lapse rate = "31d Active Lapse Absolute" / LAG("Eco Actives 31d Absolute")
+   RULES: Use PRIOR actives for denominator; exclude NULL/0 values; filter prior_actives >= 50.
 
 6. SHARE RULE:
    Only divide child by correct parent (Example: recurring / invoice).
@@ -46,7 +47,7 @@ CORE_RULES = """
    NEVER AVG("Avg Paid Invoice Amt") -> use weighted avg (col * actives) / SUM(actives).
 
 8. DATE MATH:
-   ALWAYS use INTERVAL. Example: date_end - INTERVAL '12 months'.
+   ALWAYS use INTERVAL. Example: date_end - INTERVAL '12 weeks'.
 
 9. IDENTIFIERS:
    - Use underscores (churn_rate), NOT hyphens (churn-rate).
@@ -64,16 +65,18 @@ new merchants    → 'New (0-12 months)'
 mature           → 'Mature (25+ months)'
 invoice          → 'Invoice Only'
 sales receipt    → '100% SR TPV' (outlier)
+'Other Mixed'    → child of "Billing & Receipt Channel Mix" (often hardest hit by lapsing)
 """
 
 # =========================
 # ESSENTIAL COLUMN MAP
 # =========================
 COLUMN_MAP = """
-Actives: "Eco Actives 31d Absolute"
-TPV:     "Eco TPV 31d Absolute"
-Txns:    "Eco Txns 31d Absolute"
-Churn:   active_cohorted_churn, passive_cohorted_churn
+Actives:   "Eco Actives 31d Absolute"
+TPV:       "Eco TPV 31d Absolute"
+Txns:      "Eco Txns 31d Absolute"
+Churn:     active_cohorted_churn, passive_cohorted_churn
+Lapse:     "31d Active Lapse Absolute", "31d Lapse Txn Absolute"
 Lifecycle: "31d Active GNA/Resurrect/Repeat Absolute"
 """
 
@@ -81,21 +84,14 @@ Lifecycle: "31d Active GNA/Resurrect/Repeat Absolute"
 # MINIMAL SQL TEMPLATES
 # =========================
 SQL_TEMPLATES = """
--- TPV per Active
-SELECT date_end, "Eco TPV 31d Absolute" / NULLIF("Eco Actives 31d Absolute",0) AS tpv_per_active
+-- Weekly Lapse Spike Proxy
+SELECT date_end, "Segment Name", Segment,
+  "31d Active Lapse Absolute" as lapse_count,
+  "31d Lapse Txn Absolute" as lapse_txns
 FROM payments
-WHERE "Segment Name"='Aggregate' AND Segment='All Segments' AND "Time Period"='Month';
-
--- Churn Rate (Correct)
-WITH base AS (
-  SELECT "Segment Name", Segment, date_end,
-    COALESCE(active_cohorted_churn,0)+COALESCE(passive_cohorted_churn,0) AS churn,
-    LAG("Eco Actives 31d Absolute") OVER (PARTITION BY "Segment Name", Segment ORDER BY date_end) AS prior_actives
-  FROM payments
-  WHERE "Time Period"='Month' AND Segment!='All Segments'
-)
-SELECT *, churn / NULLIF(prior_actives,0) AS churn_rate
-FROM base WHERE prior_actives >= 50 AND date_end = (SELECT MAX(date_end) FROM payments WHERE "Time Period"='Month');
+WHERE "Time Period"='Week' AND Segment!='All Segments'
+  AND date_end >= (SELECT MAX(date_end) FROM payments) - INTERVAL '12 weeks'
+ORDER BY lapse_txns DESC LIMIT 10;
 """
 
 # =========================
@@ -128,8 +124,8 @@ SQL:
 ```
 
 CRITICAL SELF-CHECK:
-- Did I use hyphens/spaces in CTE names? (Use underscores only)
-- Did I use Aggregate filter for totals?
+- Did I use "31d Active Lapse Absolute" if "active_cohorted_churn" is NULL/0?
+- Did I use underscores only for CTE names?
 - Did I use INTERVAL for date math?
 """
 
@@ -146,7 +142,7 @@ Results: {results}
 {TPV_DRIVER_TREE}
 Instructions:
 1. Lead with the direct answer (numbers + segments).
-2. For churn: include BOTH count and %.
-3. Decompose by GNA/Resurrect/Repeat if applicable.
+2. For lapsing/churn: include BOTH count and %.
+3. Note that Lapse Transactions often signal churn before the cohort data updates.
 4. Suggest 1 follow-up question.
 """
